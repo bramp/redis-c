@@ -1,4 +1,4 @@
-CFLAGS?= -std=c99 -pedantic $(OPTIMIZATION) -Wall -W -D__EXTENSIONS__ -D_XPG6
+CFLAGS?= -std=c99 -pedantic $(OPTIMIZATION) -Wall -W
 CCLINK?= -ldl -lnsl -lsocket -lm -lpthread
 DEBUG?= -g -rdynamic -ggdb
 
