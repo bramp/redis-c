@@ -1,5 +1,5 @@
-CFLAGS?= -std=c99 -pedantic $(OPTIMIZATION) -Wall -W
-CCLINK?= -ldl -lnsl -lsocket -lm -lpthread
+CFLAGS?= -pedantic $(OPTIMIZATION) -Wall -W
+CCLINK?= -lsocket #-ldl -lnsl -lsocket
 DEBUG?= -g -rdynamic -ggdb
 
 OBJ = libredis.o
