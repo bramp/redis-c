@@ -2,11 +2,9 @@ CFLAGS?= -pedantic $(OPTIMIZATION) -Wall -W
 CCLINK?= -lsocket #-ldl -lnsl -lsocket
 DEBUG?= -g -rdynamic -ggdb
 
-OBJ = libredis.o
+OBJ = libredis_buffer.o libredis_send.o libredis_recv.o libredis.o
 
 all: libredis
-
-libredis.o: libredis.c
 
 libredis: $(OBJ)
 	$(CC) -o libredis $(OBJ)
