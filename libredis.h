@@ -33,6 +33,11 @@ struct RedisHandle {
 	unsigned int state;          /** What state is this handle in */
 	struct Buffer buf;           /** Receive buffer to keep track of data between libredis calls. */
 
+	unsigned int replies;        /** Number of replies waiting */
+	struct Reply *reply;         /** List of replies */
+
+	size_t linePos;              /** Keeps track of how far we have looked for \r\n */
+
 	unsigned int socketOwned :1; /** Did we create this socket? */
 };
 

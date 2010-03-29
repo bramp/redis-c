@@ -24,9 +24,13 @@ struct RedisHandle * redis_create() {
 		return NULL;
 	}
 
-	h->socket = INVALID_SOCKET;
+	h->replies = 0;
+	h->reply   = NULL;
+	h->linePos = NULL;
+
+	h->socket      = INVALID_SOCKET;
 	h->socketOwned = 1;
-	h->lastErr = NULL;
+	h->lastErr     = NULL;
 
 	return h;
 }

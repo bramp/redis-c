@@ -4,7 +4,7 @@
 #include <sys/socket.h>
 #include <stdio.h>
 
-struct Object * redis_readInline(struct RedisHandle * h) {
+struct Object * redis_readLine(struct RedisHandle * h) {
 
 	char * ptr    = buffer_start(h->buf);
 	char * ptrEnd = buffer_end(h->buf);
@@ -15,20 +15,9 @@ struct Object * redis_readInline(struct RedisHandle * h) {
 	}
 
 	/* Keep reading until we find \r\n */
-	ptr += h->inlinePos + 1;
+	ptr += h->linePos + 1;
 	while ( ptr < ptrEnd ) {
 		if (*(ptr - 1) == '\r' && *ptr == '\n') {
-			size_t offset = ptr - buffer_start(h->buf);
-
-			struct Object *o = redis_object_init_copy(buffer_start(h->buf), offset);
-			if (o == NULL) {
-				h->lastErr = "Error allocating a object";
-				return NULL;
-			}
-
-			// Shift this data off the buffer now
-			buffer_unshift(h->buf, offset);
-
 			return o;
 		}
 
@@ -40,7 +29,7 @@ struct Object * redis_readInline(struct RedisHandle * h) {
 	}
 
 	// Record state of how far we got
-	h->inlinePos = ptr - buffer_start(h->buf);
+	h->linePos = ptr - buffer_start(h->buf);
 
 	return NULL;
 }
@@ -76,7 +65,12 @@ static int redis_readmore(struct RedisHandle * h, size_t hint) {
 #define STATE_READ_BULK       2 /** We reading a bulk reply       */ // bulkLen, object
 #define STATE_READ_MULTI_BULK 3 /** We reading a multi-mulk reply */ // bulkCount, objects
 
-
+/**
+ * @internal
+ * We are waiting for commands
+ * @param h
+ * @return The number of more bytes we need
+ */
 static int state_waiting(struct RedisHandle * h) {
 	char * buffer;
 
@@ -91,21 +85,21 @@ static int state_waiting(struct RedisHandle * h) {
 		case '+': // OK
 		case ':': // Integer
 			/* Keep reading until we find a \r\n */
-
-			if (h->state == STATE_WAITING) {
-				h->inlinePos = 0;
-				h->state = STATE_READ_INLINE;
-			}
-
-			Object * o = redis_readInline(h);
-
-			if (o) {
-				h->state = STATE_READ_INLINE;
-			}
+			h->state = STATE_READ_INLINE;
+			h->linePos = 0;
+			return state_read_inline(h);
 
 			break;
 
 		case '$': /* $N\r\n Keep reading for N bytes and then a \r\n */
+			h->state = STATE_READ_BULK;
+			h->linePos = 0;
+
+			if (h->bulkLength == 0) {
+				char * ptr = redis_readLine(h);
+
+			}
+
 			h->state = STATE_READ_BULK;
 			return redis_readBulk(h);
 			break;
@@ -119,6 +113,34 @@ static int state_waiting(struct RedisHandle * h) {
 	return 0;
 }
 
+static int state_read_inline(struct RedisHandle * h) {
+	char * ptr = redis_readLine(h);
+
+	if (ptr) { /* We found a full line */
+		size_t offset = ptr - buffer_start(h->buf);
+
+		struct Object *o = redis_object_init_copy(buffer_start(h->buf), offset);
+		if (o == NULL) {
+			h->lastErr = "Error allocating a object";
+			return NULL;
+		}
+
+		// Shift this data off the buffer now
+		buffer_unshift(h->buf, offset);
+
+
+
+		return 0;
+	}
+
+	return 128;
+}
+
+/**
+ *
+ * @param h
+ * @return How many replies are waiting
+ */
 int redis_read(struct RedisHandle * h) {
 	int len;
 	struct Object * o;
@@ -139,10 +161,20 @@ int redis_read(struct RedisHandle * h) {
 				need = state_waiting(h);
 				break;
 			case STATE_READ_INLINE:
+				need = state_read_inline(h);
+				break;
 			case STATE_READ_BULK:
+				need = state_read_bulk(h);
+				break;
 			case STATE_READ_MULTI_BULK:
+				need = state_read_multi_bulk(h);
+				break;
 		}
 
+		/* If no more bytes are needed, we can revert back to the waiting state */
+		if (need == 0) {
+			h->state = STATE_WAITING;
+		}
 	}
 
 	if (redis_readmore(h, need) < 0) {
