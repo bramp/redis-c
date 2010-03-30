@@ -14,7 +14,7 @@
 #include <string.h>
 #include <unistd.h>
 
-struct RedisHandle * redis_create() {
+struct RedisHandle * redis_alloc() {
 	struct RedisHandle *h = malloc( sizeof(struct RedisHandle) );
 	if (h == NULL)
 		return NULL;
@@ -42,7 +42,7 @@ void redis_free(struct RedisHandle * h) {
 	if (h->socket != INVALID_SOCKET && h->socketOwned)
 		closesocket(h->socket);
 
-	buffer_free(&h->recv);
+	buffer_cleanup(&h->recv);
 
 	free(h);
 }
@@ -115,49 +115,9 @@ int redis_use_socket(struct RedisHandle * h, SOCKET s) {
 	return 0;
 }
 
-
-struct Object * redis_object_init() {
-	struct Object *o = malloc( sizeof(*o) );
-	if (o == NULL)
-		return NULL;
-
-	o->ptr = NULL;
-	o->len = 0;
-	o->type = REDIS_TYPE_UNKNOWN;
-	o->ptrOwned = 0;
-	return o;
-}
-
-struct Object * redis_object_init_copy(const char *src, size_t len) {
-	struct Object *o = malloc( sizeof(*o) );
-	if (o == NULL)
-		return NULL;
-
-	o->ptr = malloc(len);
-	if (o->ptr == NULL) {
-		free(o);
-		return NULL;
-	}
-	memcpy(o->ptr, src, len);
-	o->len = len;
-	o->type = REDIS_TYPE_RAW;
-	o->ptrOwned = 1;
-	return o;
-}
-
-void redis_object_free( struct Object * o ) {
-	if (o == NULL)
-		return;
-
-	if (o->ptrOwned)
-		free(o->ptr);
-	free(o);
-}
-
-
 int main(int argc, char *argv[]) {
 
-	struct RedisHandle *handle = redis_create();
+	struct RedisHandle *handle = redis_alloc();
 	if (!handle) {
 		printf("Failed to create redis handle\n");
 		return -1;

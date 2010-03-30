@@ -6,8 +6,8 @@
 
 char * redis_readLine(struct RedisHandle * h) {
 
-	char * ptr    = buffer_start(h->buf);
-	char * ptrEnd = buffer_end(h->buf);
+	char * ptr    = buffer_start(&h->buf);
+	char * ptrEnd = buffer_end  (&h->buf);
 
 	if (*ptr != '-' && *ptr != '+' && *ptr != ':') {
 		h->lastErr = "Error reading inline data. Does not start with a '+', '-' or ':'.";
@@ -29,7 +29,7 @@ char * redis_readLine(struct RedisHandle * h) {
 	}
 
 	// Record state of how far we got
-	h->linePos = ptr - buffer_start(h->buf);
+	h->linePos = ptr - buffer_start(&h->buf);
 
 	return NULL;
 }
@@ -47,20 +47,22 @@ struct Object * redis_readMultiBulk(struct RedisHandle * h) {
  * @internal
  * Recvs some more data into the buffer
  * @param h
- * @param hint
+ * @param hint The amount of data we need
  * @return
  */
 static int redis_readmore(struct RedisHandle * h, size_t hint) {
 
-	buffer_reserveExtra(h->buf, hint);
+	int len;
 
-	len = recv(h->socket, buffer_end(h->buf), buffer_available(h->buf), 0);
+	buffer_reserveExtra(&h->buf, hint);
+
+	len = recv(h->socket, buffer_end(&h->buf), buffer_available(&h->buf), 0);
 	if (len <= 0) {
 		h->lastErr = "Error reading from redis server";
 		return -1;
 	}
 
-	buffer_push(h->buf, len);
+	buffer_push(&h->buf, len);
 	return len;
 }
 
@@ -81,10 +83,10 @@ static int state_waiting(struct RedisHandle * h) {
 
 	assert(h->state == STATE_WAITING);
 
-	if (buffer_len(h->buf) < 1)
+	if (buffer_len(&h->buf) < 1)
 		return 1;
 
-	buffer = buffer_start(h->buf);
+	buffer = buffer_start(&h->buf);
 	switch (buffer[0]) {
 		case '-': // Error
 		case '+': // OK
@@ -119,45 +121,32 @@ static int state_waiting(struct RedisHandle * h) {
 }
 
 
-struct Reply * redis_reply_init(struct RedisHandle * h, int argc) {
-
-}
-
-struct Reply * redis_reply_pop(struct RedisHandle * h) {
-	if (h->replies > 0) {
-		struct Reply *r = h->reply;
-		h->reply = h->reply->nextl
-		reply
-	}
-	return NULL;
-}
-
-void redis_reply_push(struct RedisHandle * h) {
-	h->replies++;
-}
-
-void redis_reply_free(struct Reply *) {
-
-}
-
 static int state_read_inline(struct RedisHandle * h) {
 	char * ptr = redis_readLine(h);
 
 	if (ptr) { /* We found a full line */
-		size_t len = ptr - buffer_start(h->buf);
+		size_t len = ptr - buffer_start(&h->buf);
 
-		struct Object *o = redis_object_init_copy(buffer_start(h->buf), len);
-		if (o == NULL) {
-			h->lastErr = "Error allocating a object";
+		/* Store the result */
+		struct Reply * reply = redis_reply_init(h, 1);
+		if (reply == NULL) {
+			h->lastErr = "Error allocating a Reply struct";
 			return NULL;
 		}
 
-		// Store the result
-		struct Reply * reply = add_reply(h, 1);
-		reply->argv = o;
+		struct Object *o = redis_object_init_copy(&reply->argv[0], buffer_start(&h->buf), len);
+		if (o == NULL) {
+			redis_reply_free(reply);
+			h->lastErr = "Error allocating a Object struct";
+			return NULL;
+		}
+
+		/* Push the reply onto the handle */
+		redis_reply_temp_push(h, reply);
+		redis_reply_push(h);
 
 		// Shift this data off the buffer now
-		buffer_unshift(h->buf, offset);
+		buffer_unshift(&h->buf, len);
 
 		return 0;
 	}
@@ -165,14 +154,15 @@ static int state_read_inline(struct RedisHandle * h) {
 	return 128;
 }
 
+static int state_read_bulk(struct RedisHandle * h);
+static int state_read_multibulk(struct RedisHandle * h);
+
 /**
  *
  * @param h
- * @return How many replies are waiting
+ * @return How many replies are waiting, or -1 on error.
  */
 int redis_read(struct RedisHandle * h) {
-	int len;
-	struct Object * o;
 	size_t need = 0;
 
 	if (h != NULL)
@@ -196,7 +186,7 @@ int redis_read(struct RedisHandle * h) {
 				need = state_read_bulk(h);
 				break;
 			case STATE_READ_MULTI_BULK:
-				need = state_read_multi_bulk(h);
+				need = state_read_multibulk(h);
 				break;
 		}
 
@@ -209,4 +199,6 @@ int redis_read(struct RedisHandle * h) {
 	if (redis_readmore(h, need) < 0) {
 		return -1;
 	}
+
+	return h->replies;
 }

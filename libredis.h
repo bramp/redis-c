@@ -27,10 +27,10 @@ struct Object {
 };
 
 struct Reply {
-	struct Reply *next;
+	struct Reply *next;       /** Next reply in the list of replies */
 
-	int argc;
-	Object *argv[];
+	unsigned int argc;        /** Number of responses this reply contains */
+	struct Object argv[1];    /** The responses */
 };
 
 struct RedisHandle {
@@ -40,7 +40,7 @@ struct RedisHandle {
 	unsigned int state;          /** What state is this handle in */
 	struct Buffer buf;           /** Receive buffer to keep track of data between libredis calls. */
 
-	unsigned int replies;        /** Number of replies waiting */
+	unsigned int replies;        /** Number of replies waiting (this may be less than the number of replies in the following linked list */
 	struct Reply *reply;         /** List of replies */
 	struct Reply *lastReply;     /** The last reply we received (points to end of list) */
 
@@ -63,14 +63,14 @@ struct RedisHandle {
  *
  * @see redis_free
  */
-struct RedisHandle * redis_create();
+struct RedisHandle * redis_alloc();
 
 /**
  * Cleans up a RedisHandle releasing all resources and making it no longer valid.
  *
  * @param handle The handle to free
  *
- * @see redis_create
+ * @see redis_alloc
  */
 void redis_free(struct RedisHandle * h);
 
@@ -105,8 +105,24 @@ int redis_use_socket(struct RedisHandle * h, SOCKET s);
 /*
  * Object
  */
-struct Object * redis_object_init();
-struct Object * redis_object_init_copy(const char *buf, size_t buflen);
+struct Object * redis_object_alloc(size_t buflen);
+struct Object * redis_object_alloc_copy(const char *buf, size_t buflen);
+
+struct Object * redis_object_init(struct Object *o, size_t buflen);
+struct Object * redis_object_init_copy(struct Object * o, const char *buf, size_t buflen);
+
+/**
+ * Cleanup any memory used internally by the object.
+ * Use this function if you created the Object and used {@link redis_object_init}
+ * @param o
+ */
+void redis_object_cleanup( struct Object * o );
+
+/**
+ * Cleanup any memory used by the object, and free the Object's memory.
+ * Use this function if the Object was created with {@link redis_object_alloc}
+ * @param o
+ */
 void redis_object_free( struct Object * o );
 
 /*
@@ -157,5 +173,43 @@ int redis_send(struct RedisHandle *handle, const int argc, const struct Object a
  */
 struct Object * redis_readInline(struct RedisHandle * h, struct Object *object, size_t * objectMaxLen);
 int redis_read(struct RedisHandle * h);
+
+/*
+ * Reply
+ */
+
+/**
+ * Creates a new Reply with argc responses.
+ * @param argc Number of responses to attach to the reply
+ * @return The new reply, or NULL on error.
+ */
+struct Reply * redis_reply_alloc(int argc);
+
+/**
+ * Retrieves a Reply from the RedisHandle.
+ * @param h A new Reply, or NULL if there are no Replies.
+ */
+struct Reply * redis_reply_pop(struct RedisHandle * h);
+
+/**
+ * Push the Reply onto the end of list of replies, BUT don't increment
+ * the count of replies. This allows us to store the reply while we are
+ * working on it.
+ * @param h
+ * @param r
+ */
+void redis_reply_temp_push(struct RedisHandle * h, struct Reply *r);
+
+/**
+ * We have now finished creating the reply, so increment the count of replies.
+ * @param h
+ */
+void redis_reply_push(struct RedisHandle * h);
+
+/**
+ * Frees a reply that was created with {@link redis_reply_alloc}
+ * @param r
+ */
+void redis_reply_free(struct Reply *r);
 
 #endif /* LIBREDIS_H */

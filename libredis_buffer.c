@@ -18,7 +18,7 @@ struct Buffer * buffer_init(struct Buffer *buf, size_t size) {
 	return buf;
 }
 
-void buffer_free(struct Buffer *buf) {
+void buffer_cleanup(struct Buffer *buf) {
 	buffer_assert(buf);
 	free(buf->buf);
 }

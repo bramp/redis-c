@@ -14,7 +14,7 @@ struct Buffer {
 
 /**
  * Initialises the passed in Buffer ensuring it holds at least size.
- * The buffer must later have {@link buffer_free} called on it.
+ * The buffer must later have {@link buffer_cleanup} called on it.
  * @param buf The buffer to init. Could have been created on the stack, or previous malloced.
  *        If malloced it is the callers responsibility to free it.
  * @param size The minimum size the buffer should start with. If zero is given a default size is used.
@@ -26,7 +26,7 @@ struct Buffer * buffer_init(struct Buffer *buf, size_t size);
  * Frees the buffer
  * @param buf
  */
-void buffer_free(struct Buffer *buf);
+void buffer_cleanup(struct Buffer *buf);
 
 /**
  * Ensure there is at least this much space overall in the buffer
