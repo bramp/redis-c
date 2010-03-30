@@ -26,6 +26,13 @@ struct Object {
 	unsigned int ptrOwned :1; /** Should we free the ptr? */
 };
 
+struct Reply {
+	struct Reply *next;
+
+	int argc;
+	Object *argv[];
+};
+
 struct RedisHandle {
 	SOCKET socket;
 	const char *lastErr;         /** Keeps track of the last err */
@@ -35,6 +42,7 @@ struct RedisHandle {
 
 	unsigned int replies;        /** Number of replies waiting */
 	struct Reply *reply;         /** List of replies */
+	struct Reply *lastReply;     /** The last reply we received (points to end of list) */
 
 	size_t linePos;              /** Keeps track of how far we have looked for \r\n */
 

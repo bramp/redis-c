@@ -4,7 +4,7 @@
 #include <sys/socket.h>
 #include <stdio.h>
 
-struct Object * redis_readLine(struct RedisHandle * h) {
+char * redis_readLine(struct RedisHandle * h) {
 
 	char * ptr    = buffer_start(h->buf);
 	char * ptrEnd = buffer_end(h->buf);
@@ -18,7 +18,7 @@ struct Object * redis_readLine(struct RedisHandle * h) {
 	ptr += h->linePos + 1;
 	while ( ptr < ptrEnd ) {
 		if (*(ptr - 1) == '\r' && *ptr == '\n') {
-			return o;
+			return ptr;
 		}
 
 		/* We can skip 1 if this character isn't a \r */
@@ -37,6 +37,11 @@ struct Object * redis_readLine(struct RedisHandle * h) {
 struct Object * redis_readBulk(struct RedisHandle * h) {
 
 }
+
+struct Object * redis_readMultiBulk(struct RedisHandle * h) {
+
+}
+
 
 /**
  * @internal
@@ -113,22 +118,46 @@ static int state_waiting(struct RedisHandle * h) {
 	return 0;
 }
 
+
+struct Reply * redis_reply_init(struct RedisHandle * h, int argc) {
+
+}
+
+struct Reply * redis_reply_pop(struct RedisHandle * h) {
+	if (h->replies > 0) {
+		struct Reply *r = h->reply;
+		h->reply = h->reply->nextl
+		reply
+	}
+	return NULL;
+}
+
+void redis_reply_push(struct RedisHandle * h) {
+	h->replies++;
+}
+
+void redis_reply_free(struct Reply *) {
+
+}
+
 static int state_read_inline(struct RedisHandle * h) {
 	char * ptr = redis_readLine(h);
 
 	if (ptr) { /* We found a full line */
-		size_t offset = ptr - buffer_start(h->buf);
+		size_t len = ptr - buffer_start(h->buf);
 
-		struct Object *o = redis_object_init_copy(buffer_start(h->buf), offset);
+		struct Object *o = redis_object_init_copy(buffer_start(h->buf), len);
 		if (o == NULL) {
 			h->lastErr = "Error allocating a object";
 			return NULL;
 		}
 
+		// Store the result
+		struct Reply * reply = add_reply(h, 1);
+		reply->argv = o;
+
 		// Shift this data off the buffer now
 		buffer_unshift(h->buf, offset);
-
-
 
 		return 0;
 	}
