@@ -55,46 +55,25 @@ struct Buffer * buffer_reserveExtra(struct Buffer *buf, size_t size);
 struct Buffer * buffer_shrink(struct Buffer *buf);
 
 /**
- * @internal
- * Asserts that all the buffer parameters make sense.
- * Useful for debugging.
- */
-static void buffer_assert(const struct Buffer *buf) {
-	assert(buf != NULL);
-	assert(buf->buf != NULL);
-	assert(buf->data <= buf->bufLen);
-	assert(buf->data + buf->dataLen <= buf->bufLen);
-}
-
-/**
  * Returns the beginning of the data
  * @param buf
  * @return
  */
-static char *buffer_start(const struct Buffer *buf) {
-	buffer_assert(buf);
-	return &buf->buf[buf->data];
-}
+char *buffer_start(const struct Buffer *buf);
 
 /**
  * Returns the end of the data
  * @param buf
  * @return
  */
-static char *buffer_end(const struct Buffer *buf) {
-	buffer_assert(buf);
-	return &buf->buf[buf->data + buf->dataLen];
-}
+char *buffer_end(const struct Buffer *buf);
 
 /**
  * Returns the length of the data
  * @param buf
  * @return
  */
-static size_t buffer_len(const struct Buffer *buf) {
-	buffer_assert(buf);
-	return buf->dataLen;
-}
+size_t buffer_len(const struct Buffer *buf);
 
 /**
  * How much space is free in the remaining buffer. If there is not
@@ -102,10 +81,7 @@ static size_t buffer_len(const struct Buffer *buf) {
  * @param buf The buffer
  * @return how much free space
  */
-static size_t buffer_available(const struct Buffer *buf) {
-	buffer_assert(buf);
-	return buf->bufLen - buf->data - buf->dataLen;
-}
+size_t buffer_available(const struct Buffer *buf);
 
 /**
  * Pushes size bytes onto the end of data. No data is actually copied, as
@@ -115,13 +91,7 @@ static size_t buffer_available(const struct Buffer *buf) {
  * @param size
  * @return The number of bytes pushed, this may be smaller than size.
  */
-static size_t buffer_push(struct Buffer *buf, size_t size) {
-	if (buffer_available(buf) < size)
-		size = buffer_available(buf);
-
-	buf->dataLen += size;
-	return size;
-}
+size_t buffer_push(struct Buffer *buf, size_t size);
 
 /**
  * Pops size bytes from the end of the data.
@@ -129,18 +99,7 @@ static size_t buffer_push(struct Buffer *buf, size_t size) {
  * @param size
  * @return The number of bytes popped, this may be smaller than size.
  */
-static size_t buffer_pop(struct Buffer *buf, size_t size) {
-	if (buffer_len(buf) < size)
-		size = buffer_len(buf);
-
-	buf->dataLen -= size;
-
-	// If we have no data we can easily move our pointer down
-	if (buf->dataLen == 0)
-		buf->data = 0;
-
-	return size;
-}
+size_t buffer_pop(struct Buffer *buf, size_t size);
 
 /**
  * Remove size bytes from the beginning of the data.
@@ -149,21 +108,6 @@ static size_t buffer_pop(struct Buffer *buf, size_t size) {
  * @param size
  * @return The number of bytes unshifted, this may be smaller than size.
  */
-static size_t buffer_unshift(struct Buffer *buf, size_t size) {
-	buffer_assert(buf);
-
-	if (buffer_len(buf) < size)
-		size = buffer_len(buf);
-
-	buf->dataLen -= size;
-
-	// If we have no data we can easily move our pointer down
-	if (buf->dataLen == 0)
-		buf->data = 0;
-	else
-		buf->data += size;
-
-	return size;
-}
+size_t buffer_unshift(struct Buffer *buf, size_t size);
 
 #endif /* LIBREDIS_BUFFER_H */

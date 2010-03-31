@@ -96,9 +96,7 @@ int redis_connect(struct RedisHandle * h, const char *host, unsigned short port)
  *
  * @return The socket which is being used, or INVALID_SOCKET if no socket is being used.
  */
-static SOCKET redis_get_socket(struct RedisHandle * h) {
-	return h->socket;
-}
+SOCKET redis_get_socket(struct RedisHandle * h);
 
 int redis_use_socket(struct RedisHandle * h, SOCKET s);
 

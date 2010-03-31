@@ -3,6 +3,7 @@
  * A C library for the Redis server
  */
 #include "libredis.h"
+#include "libredis_private.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -19,14 +20,14 @@ struct RedisHandle * redis_alloc() {
 	if (h == NULL)
 		return NULL;
 
-	if (buffer_init(&h->recv, 128) == NULL) {
+	if (buffer_init(&h->buf, UNKNOWN_READ_LENGTH) == NULL) {
 		free(h);
 		return NULL;
 	}
 
 	h->replies = 0;
 	h->reply   = NULL;
-	h->linePos = NULL;
+	h->linePos = 0;
 
 	h->socket      = INVALID_SOCKET;
 	h->socketOwned = 1;
@@ -36,13 +37,25 @@ struct RedisHandle * redis_alloc() {
 }
 
 void redis_free(struct RedisHandle * h) {
+
+	struct Reply *r;
+
 	if (h == NULL)
 		return;
 
+	/* Close the socket if we own it */
 	if (h->socket != INVALID_SOCKET && h->socketOwned)
 		closesocket(h->socket);
 
-	buffer_cleanup(&h->recv);
+	buffer_cleanup(&h->buf);
+
+	/* Free all the replies */
+	r = h->reply;
+	while (r) {
+		struct Reply *next = r->next;
+		redis_reply_free(r);
+		r = next;
+	}
 
 	free(h);
 }
@@ -105,6 +118,10 @@ int redis_connect(struct RedisHandle * h, const char *host, unsigned short port)
 cleanup:
 	freeaddrinfo( aiList );
 	return ret;
+}
+
+SOCKET redis_get_socket(struct RedisHandle * h) {
+	return h->socket;
 }
 
 int redis_use_socket(struct RedisHandle * h, SOCKET s) {
