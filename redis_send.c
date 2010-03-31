@@ -1,4 +1,4 @@
-#include "libredis.h"
+#include "redis-c.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>

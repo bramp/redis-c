@@ -1,4 +1,4 @@
-#include "libredis_buffer.h"
+#include "redis-c.h"
 
 #include <string.h>
 

@@ -1,25 +1,28 @@
-CFLAGS?= -pedantic $(OPTIMIZATION) -Wall -W
+# -D_POSIX_C_SOURCE=200112L Allows getaddrinfo to be used when -std=c99 is in use.
+
+CFLAGS?= $(OPTIMIZATION) -Wall -W #-pedantic -std=c99 -D_POSIX_C_SOURCE=200112L
 CCLINK?= -lsocket #-ldl -lnsl -lsocket
 DEBUG?= -g -rdynamic -ggdb
 
-OBJ = libredis_object.o libredis_reply.o libredis_buffer.o libredis_send.o libredis_recv.o libredis.o
+OBJ = redis_object.o redis_reply.o redis_buffer.o redis_cmd.o redis_send.o redis_recv.o redis-c.o
 
-all: libredis
+all: redis-c
 
-libredis: $(OBJ)
-	$(CC) -o libredis $(OBJ)
+redis-c: $(OBJ)
+	$(CC) -o redis-c $(OBJ)
 
-libredis_object.c : libredis.h
-libredis_reply.c  : libredis.h
-libredis_buffer.c : libredis.h
-libredis_send.c   : libredis.h
-libredis_recv.c   : libredis.h libredis_private.h
-libredis.c        : libredis.h libredis_private.h
+redis_object.c : redis-c.h
+redis_reply.c  : redis-c.h
+redis_buffer.c : redis-c.h
+redis_cmd.c    : redis-c.h
+redis_send.c   : redis-c.h
+redis_recv.c   : redis-c.h redis_private.h
+redis-c.c      : redis-c.h redis_private.h
 
-libredis.h        : libredis_buffer.h
+redis-c.h         : redis_buffer.h
 
 .c.o:
 	$(CC) -c $(CFLAGS) $(DEBUG) $<
 
 clean:
-	rm *.o
+	rm *.o redis-c

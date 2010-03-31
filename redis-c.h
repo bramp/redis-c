@@ -1,7 +1,7 @@
-#ifndef LIBREDIS_H
-#define LIBREDIS_H
+#ifndef REDIS_C_H
+#define REDIS_C_H
 
-#include "libredis_buffer.h"
+#include "redis_buffer.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -38,7 +38,7 @@ struct RedisHandle {
 	const char *lastErr;         /** Keeps track of the last err */
 
 	unsigned int state;          /** What state is this handle in */
-	struct Buffer buf;           /** Receive buffer to keep track of data between libredis calls. */
+	struct Buffer buf;           /** Receive buffer to keep track of data between calls. */
 
 	unsigned int replies;        /** Number of replies waiting (this may be less than the number of replies in the following linked list */
 	struct Reply *reply;         /** List of replies */
@@ -215,4 +215,7 @@ void redis_reply_push(struct RedisHandle * h);
  */
 void redis_reply_free(struct Reply *r);
 
-#endif /* LIBREDIS_H */
+
+void redis_reply_print(const struct Reply *r);
+
+#endif /* REDIS_C_H */

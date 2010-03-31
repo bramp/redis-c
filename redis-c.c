@@ -1,9 +1,9 @@
 /**
- * libRedis by Andrew Brampton 2010
+ * redis-c by Andrew Brampton 2010
  * A C library for the Redis server
  */
-#include "libredis.h"
-#include "libredis_private.h"
+#include "redis-c.h"
+#include "redis_private.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
