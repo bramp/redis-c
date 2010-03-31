@@ -23,13 +23,6 @@ struct Reply * redis_reply_alloc(int argc) {
 	return r;
 }
 
-/*
- * FIFO
- * Add to the back (lastReply->next = reply; lastReply = reply)
- * Take from the front (reply = reply->next)
- */
-
-
 struct Reply * redis_reply_pop(struct RedisHandle * h) {
 	struct Reply *r;
 

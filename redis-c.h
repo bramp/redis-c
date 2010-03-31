@@ -40,11 +40,11 @@ struct RedisHandle {
 	unsigned int state;          /** What state is this handle in */
 	struct Buffer buf;           /** Receive buffer to keep track of data between calls. */
 
-	unsigned int replies;        /** Number of replies waiting (this may be less than the number of replies in the following linked list */
+	unsigned int replies;        /** Number of replies waiting (this may be less than the number of replies in the following linked list) */
 	struct Reply *reply;         /** List of replies */
 	struct Reply *lastReply;     /** The last reply we received (points to end of list) */
 
-	size_t linePos;              /** Keeps track of how far we have looked for \r\n */
+	size_t linePos;              /** Keeps track of how far we have looked for the newline */
 
 	unsigned int socketOwned :1; /** Did we create this socket? */
 };
@@ -56,49 +56,57 @@ struct RedisHandle {
 
 /**
  * Creates a new handle to connect to a Redis server. This handle will be passed to most
- * of the API's functions. The handle must be freed once it is no longer needed by
- * {@link redis_free}.
+ * of the API's functions. The handle must be freed once it is no longer needed by #redis_free.
  *
- * @return A new {@link RedisHandle}, or NULL if a error occurred.
+ * @return A new #RedisHandle.
+ * @return NULL if an error occurred.
  *
  * @see redis_free
  */
 struct RedisHandle * redis_alloc();
 
 /**
- * Cleans up a RedisHandle releasing all resources and making it no longer valid.
+ * Cleans up a #RedisHandle releasing all resources and making it no longer valid.
  *
- * @param handle The handle to free
+ * @param handle
  *
  * @see redis_alloc
  */
-void redis_free(struct RedisHandle * h);
+void redis_free(struct RedisHandle * handle);
 
 /**
  * Returns the last error to have occurred on this handle.
  *
- * @return The last error as a string, or NULL if no error occurred.
+ * @param handle
+ *
+ * @return The last error as a string.
+ * @return NULL if no error occurred.
  */
-const char * redis_error(struct RedisHandle * h);
+const char * redis_error(struct RedisHandle * handle);
 
 /**
  * Connects to a Redis Server.
  *
+ * @param handle
  * @param host Server's hostname. If NULL localhost is used.
  * @param port Server's port. If 0 the default 6379 is used.
  *
- * @return 0 on success, -1 on failure. Use {@link redis_error} to determine the error
+ * @return  0 on success.
+ * @return -1 on failure. Use #redis_error to determine the error
  */
-int redis_connect(struct RedisHandle * h, const char *host, unsigned short port);
+int redis_connect(struct RedisHandle * handle, const char *host, unsigned short port);
 
 /**
  * Returns the socket used to connect to the Redis Server.
  *
- * @return The socket which is being used, or INVALID_SOCKET if no socket is being used.
+ * @param handle
+ *
+ * @return The socket which is being used
+ * @return #INVALID_SOCKET if no socket is being used.
  */
-SOCKET redis_get_socket(struct RedisHandle * h);
+SOCKET redis_get_socket(struct RedisHandle * handle);
 
-int redis_use_socket(struct RedisHandle * h, SOCKET s);
+int redis_use_socket(struct RedisHandle * handle, SOCKET s);
 
 /*
  * Object
@@ -111,20 +119,23 @@ struct Object * redis_object_init_copy(struct Object * o, const char *buf, size_
 
 /**
  * Cleanup any memory used internally by the object.
- * Use this function if you created the Object and used {@link redis_object_init}
+ * Use this function if you created the #Object and used #redis_object_init
+ *
  * @param o
  */
 void redis_object_cleanup( struct Object * o );
 
 /**
- * Cleanup any memory used by the object, and free the Object's memory.
- * Use this function if the Object was created with {@link redis_object_alloc}
+ * Cleanup any memory used by the object, and free the #Object's memory.
+ * Use this function if the #Object was created with #redis_object_alloc
+ *
  * @param o
  */
 void redis_object_free( struct Object * o );
 
 /**
- * Prints the Object out to stdout. Useful for debugging.
+ * Prints the #Object out to stdout. Useful for debugging.
+ *
  * @param o
  */
 void redis_object_print( const struct Object * o );
@@ -135,47 +146,49 @@ void redis_object_print( const struct Object * o );
 
 /**
  * Sends a multi bulk encoded command to a Redis server. All arguments may be of  any type.
- * This is not as effecient as @link{redis_send} or @link{redis_sendBulk}, but it does allow
- * @link{REDIS_TYPE_RAW} keys and values to be used as any argument.
+ * This is not as efficient as #redis_send or #redis_send_bulk, but it does allow
+ * #REDIS_TYPE_RAW keys and values to be used as any argument.
  *
- * @param h
+ * @param handle
  * @param argc The number of arguments stored in argv.
- * @param argv An array of @link{Object}s to be sent in the command.
+ * @param argv An array of #Object s to be sent in the command.
  *
- * @return 0 on success, -1 on failure. Use {@link redis_error} to determine the error
+ * @return  0 on success
+ * @return -1 on failure. Use #redis_error to determine the error
  */
 int redis_send_multibulk(struct RedisHandle *handle, const int argc, const struct Object argv[] );
 
 /**
  * Sends a bulk encoded command to a Redis server. All but the last argument of a bulk
- * comamnd must be @link{REDIS_TYPE_STR}, whereas the last argument may be
- * @link{REDIS_TYPE_RAW}.
+ * command must be #REDIS_TYPE_STR, whereas the last argument may be #REDIS_TYPE_RAW.
  *
- * @param h
+ * @param handle
  * @param argc The number of arguments stored in argv.
- * @param argv An array of @link{Object}s to be sent in the command.
+ * @param argv An array of #Object s to be sent in the command.
  *
- * @return 0 on success, -1 on failure. Use {@link redis_error} to determine the error
+ * @return 0 on success.
+ * @return -1 on failure. Use #redis_error to determine the error
  */
 int redis_send_bulk(struct RedisHandle *handle, const int argc, const struct Object argv[] );
 
 /**
  * Sends a bulk encoded command to a Redis server. All but the last argument of a bulk
- * comamnd must be @link{REDIS_TYPE_STR}, whereas the last argument may be
- * @link{REDIS_TYPE_RAW}.
+ * command must be #REDIS_TYPE_STR, whereas the last argument may be #REDIS_TYPE_RAW.
  *
- * @param h
+ * @param handle
  * @param argc The number of arguments stored in argv.
- * @param argv An array of @link{Object}s to be sent in the command.
+ * @param argv An array of #Object s to be sent in the command.
  *
- * @return 0 on success, -1 on failure. Use {@link redis_error} to determine the error
+ * @return  0 on success
+ * @return -1 on failure. Use #redis_error to determine the error
  */
 int redis_send(struct RedisHandle *handle, const int argc, const struct Object argv[] );
 
 /*
  * Recv
  */
-int redis_read(struct RedisHandle * h);
+
+int redis_read(struct RedisHandle * handle);
 
 /*
  * Reply
@@ -183,39 +196,51 @@ int redis_read(struct RedisHandle * h);
 
 /**
  * Creates a new Reply with argc responses.
+ *
  * @param argc Number of responses to attach to the reply
+ *
  * @return The new reply, or NULL on error.
  */
 struct Reply * redis_reply_alloc(int argc);
 
 /**
- * Retrieves a Reply from the RedisHandle.
- * @param h A new Reply, or NULL if there are no Replies.
+ * Retrieves a #Reply from the #RedisHandle.
+ *
+ * @param handle
+ *
+ * @return A new #Reply
+ * @return NULL if there are no queued #Reply s.
  */
-struct Reply * redis_reply_pop(struct RedisHandle * h);
+struct Reply * redis_reply_pop(struct RedisHandle * handle);
 
 /**
- * Push the Reply onto the end of list of replies, BUT don't increment
+ * Pushes the #Reply onto the end of list of replies, BUT don't increment
  * the count of replies. This allows us to store the reply while we are
  * working on it.
- * @param h
- * @param r
+ *
+ * @param handle
+ * @param reply
  */
-void redis_reply_temp_push(struct RedisHandle * h, struct Reply *r);
+void redis_reply_temp_push(struct RedisHandle * handle, struct Reply *reply);
 
 /**
  * We have now finished creating the reply, so increment the count of replies.
- * @param h
+ * @param handle
  */
-void redis_reply_push(struct RedisHandle * h);
+void redis_reply_push(struct RedisHandle * handle);
 
 /**
- * Frees a reply that was created with {@link redis_reply_alloc}
- * @param r
+ * Frees a reply that was created with #redis_reply_alloc
+ *
+ * @param reply
  */
-void redis_reply_free(struct Reply *r);
+void redis_reply_free(struct Reply *reply);
 
-
-void redis_reply_print(const struct Reply *r);
+/**
+ * Prints the reply and all its arguments to stdout.
+ *
+ * @param reply
+ */
+void redis_reply_print(const struct Reply *reply);
 
 #endif /* REDIS_C_H */
