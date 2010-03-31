@@ -35,7 +35,7 @@ static int fullsend(SOCKET s, const char *buf, size_t len, int flags) {
  *
  * @return The number of bytes written
 */
-static int sendObject(struct RedisHandle *h, const struct Object *obj, const char *extra, int flags) {
+static int send_object(struct RedisHandle *h, const struct Object *obj, const char *extra, int flags) {
 	char buf[1024];
 	size_t extraLen = strlen(extra);
 
@@ -67,7 +67,7 @@ static int sendObject(struct RedisHandle *h, const struct Object *obj, const cha
  * @internal
  * Send a single object as a bulk (that is send the length then the data)
  */
-static int sendSingleBulk(struct RedisHandle *h, const struct Object *obj, int printStar) {
+static int send_single_bulk(struct RedisHandle *h, const struct Object *obj, int printStar) {
 
 	const char *fmt = printStar ? "*%ld\r\n" : "%ld\r\n";
 	char lenString[16];
@@ -82,7 +82,7 @@ static int sendSingleBulk(struct RedisHandle *h, const struct Object *obj, int p
 		return -1;
 
 	/* Sent the argument's data (followed by a newline) */
-	if (sendObject(h, obj, "\r\n", 0) < 0)
+	if (send_object(h, obj, "\r\n", 0) < 0)
 		return -1;
 
 	return 1;
@@ -93,7 +93,7 @@ static int sendSingleBulk(struct RedisHandle *h, const struct Object *obj, int p
  * Removes a bit of repeated code. Just checks if the arguments are valid
  * @param strings The number of arguments which must be strings
  */
-static inline int checkSendParameters(struct RedisHandle *h, const int argc, const struct Object argv[], int strings) {
+static inline int check_send_parameters(struct RedisHandle *h, const int argc, const struct Object argv[], int strings) {
 
 	const struct Object *obj;
 	const struct Object *last;
@@ -138,12 +138,12 @@ static inline int checkSendParameters(struct RedisHandle *h, const int argc, con
 	return 0;
 }
 
-int redis_sendMultiBulk(struct RedisHandle *handle, const int argc, const struct Object argv[] ) {
+int redis_send_multibulk(struct RedisHandle *handle, const int argc, const struct Object argv[] ) {
 	const struct Object *obj;
 	const struct Object *last;
 	char lenString[16];
 
-	if (checkSendParameters(handle, argc, argv, 0))
+	if (check_send_parameters(handle, argc, argv, 0))
 		return -1;
 
 	/* Send the number of arguments */
@@ -155,25 +155,25 @@ int redis_sendMultiBulk(struct RedisHandle *handle, const int argc, const struct
 	obj  = &argv[0];
 	last = &argv[argc];
 	while (obj < last) {
-		if (sendSingleBulk(handle, obj, 1) < 0)
+		if (send_single_bulk(handle, obj, 1) < 0)
 			return -1;
 		obj++;
 	}
 	return argc;
 }
 
-int redis_sendBulk(struct RedisHandle *handle, const int argc, const struct Object argv[] ) {
+int redis_send_bulk(struct RedisHandle *handle, const int argc, const struct Object argv[] ) {
 	const struct Object *obj;
 	const struct Object *last;
 
-	if (checkSendParameters(handle, argc, argv, argc - 1))
+	if (check_send_parameters(handle, argc, argv, argc - 1))
 		return -1;
 
 	/* Now loop sending all but the last argument */
 	obj  = &argv[0];
 	last = &argv[argc - 1];
 	while (obj < last) {
-		if (sendObject(handle, obj, " ", 0) < 0) {
+		if (send_object(handle, obj, " ", 0) < 0) {
 			handle->lastErr = "Error sending argument";
 			return -1;
 		}
@@ -181,7 +181,7 @@ int redis_sendBulk(struct RedisHandle *handle, const int argc, const struct Obje
 	}
 
 	/* For the last argument we send as bulk */
-	if (sendSingleBulk(handle, obj, 0) < 0) {
+	if (send_single_bulk(handle, obj, 0) < 0) {
 		handle->lastErr = "Error sending bulk argument";
 		return -1;
 	}
@@ -193,14 +193,14 @@ int redis_send(struct RedisHandle *handle, const int argc, const struct Object a
 	const struct Object *obj;
 	const struct Object *last;
 
-	if (checkSendParameters(handle, argc, argv, argc))
+	if (check_send_parameters(handle, argc, argv, argc))
 		return -1;
 
 	/* Now loop sending all arguments */
 	obj  = &argv[0];
 	last = &argv[argc];
 	while (obj < last) {
-		if (sendObject(handle, obj, " ", 0) < 0) {
+		if (send_object(handle, obj, " ", 0) < 0) {
 			handle->lastErr = "Error sending argument";
 			return -1;
 		}

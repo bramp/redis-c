@@ -5,10 +5,6 @@
 #include <sys/socket.h>
 #include <stdio.h>
 
-#define STATE_WAITING         0 /** We are waiting for the first line of the reply */
-#define STATE_READ_BULK       1 /** We reading a bulk reply                        */
-#define STATE_READ_MULTI_BULK 2 /** We reading a multi-mulk reply                  */
-
 static int state_waiting(struct RedisHandle * h);
 static int state_read_bulk(struct RedisHandle * h);
 static int state_read_multibulk(struct RedisHandle * h);
@@ -40,11 +36,6 @@ char * redis_readLine(struct RedisHandle * h) {
 
 	char * ptr    = buffer_start(&h->buf);
 	char * ptrEnd = buffer_end  (&h->buf);
-
-	if (*ptr != '-' && *ptr != '+' && *ptr != ':') {
-		h->lastErr = "Error reading inline data. Does not start with a '+', '-' or ':'.";
-		return NULL;
-	}
 
 	/* Keep reading until we find \r\n */
 	ptr += h->linePos + 1;
@@ -186,7 +177,7 @@ static int state_waiting(struct RedisHandle * h) {
 
 static int state_read_bulk(struct RedisHandle * h) {
 
-	struct Object * o = &h->reply[0].argv[0];
+	struct Object * o = &h->lastReply->argv[0];
 	size_t len = o->len;
 
 	if (buffer_len(&h->buf) < len)
@@ -218,8 +209,7 @@ static int state_read_multibulk(struct RedisHandle * h) {
 int redis_read(struct RedisHandle * h) {
 	int need = 0;
 
-	if (h != NULL)
-		return -1;
+	assert(h != NULL);
 
 	if (h->socket == INVALID_SOCKET) {
 		h->lastErr = "Invalid socket";

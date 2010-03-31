@@ -123,6 +123,12 @@ void redis_object_cleanup( struct Object * o );
  */
 void redis_object_free( struct Object * o );
 
+/**
+ * Prints the Object out to stdout. Useful for debugging.
+ * @param o
+ */
+void redis_object_print( const struct Object * o );
+
 /*
  * Send
  */
@@ -138,7 +144,7 @@ void redis_object_free( struct Object * o );
  *
  * @return 0 on success, -1 on failure. Use {@link redis_error} to determine the error
  */
-int redis_sendMultiBulk(struct RedisHandle *handle, const int argc, const struct Object argv[] );
+int redis_send_multibulk(struct RedisHandle *handle, const int argc, const struct Object argv[] );
 
 /**
  * Sends a bulk encoded command to a Redis server. All but the last argument of a bulk
@@ -151,7 +157,7 @@ int redis_sendMultiBulk(struct RedisHandle *handle, const int argc, const struct
  *
  * @return 0 on success, -1 on failure. Use {@link redis_error} to determine the error
  */
-int redis_sendBulk(struct RedisHandle *handle, const int argc, const struct Object argv[] );
+int redis_send_bulk(struct RedisHandle *handle, const int argc, const struct Object argv[] );
 
 /**
  * Sends a bulk encoded command to a Redis server. All but the last argument of a bulk
@@ -169,7 +175,6 @@ int redis_send(struct RedisHandle *handle, const int argc, const struct Object a
 /*
  * Recv
  */
-struct Object * redis_readInline(struct RedisHandle * h, struct Object *object, size_t * objectMaxLen);
 int redis_read(struct RedisHandle * h);
 
 /*

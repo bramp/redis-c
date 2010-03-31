@@ -25,13 +25,16 @@ struct RedisHandle * redis_alloc() {
 		return NULL;
 	}
 
-	h->replies = 0;
-	h->reply   = NULL;
-	h->linePos = 0;
+	h->replies   = 0;
+	h->reply     = NULL;
+	h->lastReply = NULL;
+	h->linePos   = 0;
 
 	h->socket      = INVALID_SOCKET;
 	h->socketOwned = 1;
 	h->lastErr     = NULL;
+
+	h->state = STATE_WAITING;
 
 	return h;
 }
@@ -140,8 +143,6 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 
-	printf("A");
-
 	const struct Object args[] = {
 		REDIS_STR("SET"),
 		REDIS_STR("key"),
@@ -149,19 +150,35 @@ int main(int argc, char *argv[]) {
 	};
 
 	if ( redis_connect(handle, "localhost", 6379) ) {
-		printf("%s\n", redis_error(handle));
+		printf("redis_connect: %s\n", redis_error(handle));
 		return 0;
 	}
 
 	printf("Connected\n");
 
-	redis_sendBulk(handle, 3, args);
+	if ( redis_send_bulk(handle, 3, args) ) {
+		printf("redis_sendBulk: %s\n", redis_error(handle));
+		return 0;
+	}
 
 	printf("Sent bulk\n");
 
-	redis_read(handle);
+	int ret;
+	int i;
+	for (i = 0; i < 10; i++) {
+		ret = redis_read(handle);
+		printf("%d\n", ret);
 
-	redis_sendMultiBulk(handle, 3, args);
+		if (ret == -1) {
+			printf("redis_read: %s\n", redis_error(handle));
+		} else if (ret > 0) {
+			struct Reply *r = redis_reply_pop(handle);
+			redis_reply_print(r);
+		}
+
+	}
+
+	//redis_sendMultiBulk(handle, 3, args);
 
 	redis_free(handle);
 
