@@ -1,5 +1,6 @@
 #include "redis-c.h"
 
+#include <ctype.h>
 #include <stdio.h>
 
 struct Object * redis_object_init(struct Object *o, size_t len) {
@@ -71,18 +72,34 @@ void redis_object_free( struct Object * o ) {
 	free(o);
 }
 
+#define OBJECT_PRINT_LIMIT 10
+
 void redis_object_print( const struct Object * o ) {
+	int i;
+	const char *ptr;
+
 	switch (o->type) {
 		case REDIS_TYPE_UNKNOWN:
 		case REDIS_TYPE_RAW:
-			printf("{%d:RAW}", o->len);
-			break;
-
 		case REDIS_TYPE_STR:
-			if (o->len > 10)
-				printf("{%d:\"%.7s...\"}", o->len, o->ptr);
+			printf("{%lu:\"", (unsigned long)o->len);
+
+			ptr = o->ptr;
+			i = o->len < OBJECT_PRINT_LIMIT ? o->len : OBJECT_PRINT_LIMIT;
+
+			for (; i > 0; i--) {
+				if ( isprint( *ptr ) )
+					printf("%c", *ptr);
+				else
+					printf("\\x%.02x", (unsigned char)*ptr);
+				ptr++;
+			}
+
+			if (o->len > OBJECT_PRINT_LIMIT)
+				printf("...\"}");
 			else
-				printf("{%d:\"%.s\"}", o->len, o->ptr);
+				printf("\"}");
+
 			break;
 
 		case REDIS_TYPE_INT:
